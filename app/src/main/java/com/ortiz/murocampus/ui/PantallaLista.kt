@@ -5,11 +5,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -25,10 +29,25 @@ fun PantallaLista(
     onAbrir: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val estado by vm.lista.collectAsStateWithLifecycle()
+    val estado by vm.listaVisible.collectAsStateWithLifecycle()
     val filtro by vm.usuarioFiltro.collectAsStateWithLifecycle()
+    val busqueda by vm.busqueda.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = busqueda,
+            onValueChange = { vm.buscar(it) },
+            placeholder = { Text("Buscar por título...") },
+            singleLine = true,
+            trailingIcon = {
+                if (busqueda.isNotEmpty()) {
+                    TextButton(onClick = { vm.buscar("") }) { Text("Limpiar") }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 12.dp, top = 12.dp)
+        )
         FiltroUsuarios(
             seleccionado = filtro,
             onElegir = { vm.filtrar(it) }
@@ -43,7 +62,10 @@ fun PantallaLista(
             is UiState.Exito -> {
                 if (e.datos.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Sin publicaciones")
+                        Text(
+                            if (busqueda.isBlank()) "Sin publicaciones"
+                            else "Sin resultados para \"$busqueda\""
+                        )
                     }
                 } else {
                     LazyColumn(
