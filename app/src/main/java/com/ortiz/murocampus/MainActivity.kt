@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -19,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ortiz.murocampus.ui.PantallaCrear
 import com.ortiz.murocampus.ui.PantallaDetalle
 import com.ortiz.murocampus.ui.PantallaLista
 import com.ortiz.murocampus.ui.theme.MuroCampusTheme
@@ -35,9 +37,14 @@ class MainActivity : ComponentActivity() {
                 val vm: PostsViewModel = viewModel(factory = PostsViewModelFactory)
                 // null = se ve la lista; un id = se ve el detalle de esa publicación
                 var idSeleccionado by rememberSaveable { mutableStateOf<Int?>(null) }
+                // true = se ve el formulario para crear una publicación
+                var creando by rememberSaveable { mutableStateOf(false) }
 
                 // El botón Atrás del sistema vuelve a la lista
-                BackHandler(enabled = idSeleccionado != null) { idSeleccionado = null }
+                BackHandler(enabled = idSeleccionado != null || creando) {
+                    idSeleccionado = null
+                    creando = false
+                }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -49,10 +56,26 @@ class MainActivity : ComponentActivity() {
                                 titleContentColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
+                    },
+                    floatingActionButton = {
+                        // El botón + solo aparece en la lista
+                        if (idSeleccionado == null && !creando) {
+                            FloatingActionButton(onClick = {
+                                vm.reiniciarPublicacion()
+                                creando = true
+                            }) {
+                                Text("+", style = MaterialTheme.typography.headlineSmall)
+                            }
+                        }
                     }
                 ) { innerPadding ->
                     val id = idSeleccionado
-                    if (id == null) {
+                    if (creando) {
+                        PantallaCrear(
+                            vm = vm,
+                            modifier = Modifier.padding(innerPadding)
+                        )
+                    } else if (id == null) {
                         PantallaLista(
                             vm = vm,
                             onAbrir = { idSeleccionado = it },

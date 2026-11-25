@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.ortiz.murocampus.data.PostRepository
 import com.ortiz.murocampus.data.mensajeDe
 import com.ortiz.murocampus.model.Comentario
+import com.ortiz.murocampus.model.NuevoPost
 import com.ortiz.murocampus.model.Post
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -80,5 +81,24 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
             }
             _detalle.value = UiState.Exito(DetalleUi(post, comentarios))
         }
+    }
+
+    // ---------- Crear ----------
+    // null = todavía no se envió nada
+    private val _publicacion = MutableStateFlow<UiState<Post>?>(null)
+    val publicacion: StateFlow<UiState<Post>?> = _publicacion.asStateFlow()
+
+    fun publicar(titulo: String, texto: String) {
+        viewModelScope.launch {
+            _publicacion.value = UiState.Cargando
+            repo.crear(NuevoPost(userId = 1, title = titulo, body = texto))
+                .onSuccess { _publicacion.value = UiState.Exito(it) }
+                .onFailure { _publicacion.value = UiState.Error(mensajeDe(it)) }
+        }
+    }
+
+    // Al volver a abrir el formulario, se limpia el mensaje anterior
+    fun reiniciarPublicacion() {
+        _publicacion.value = null
     }
 }
