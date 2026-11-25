@@ -4,11 +4,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ortiz.murocampus.data.PostRepository
 import com.ortiz.murocampus.data.mensajeDe
+import com.ortiz.murocampus.model.Comentario
 import com.ortiz.murocampus.model.Post
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+// Lo que necesita la pantalla de detalle
+data class DetalleUi(
+    val post: Post,
+    val comentarios: List<Comentario>
+)
 
 class PostsViewModel(private val repo: PostRepository) : ViewModel() {
 
@@ -26,6 +36,34 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
             repo.listar()
                 .onSuccess { _lista.value = UiState.Exito(it) }
                 .onFailure { _lista.value = UiState.Error(mensajeDe(it)) }
+        }
+    }
+
+    // ---------- Detalle ----------
+    private val _detalle = MutableStateFlow<UiState<DetalleUi>>(UiState.Cargando)
+    val detalle: StateFlow<UiState<DetalleUi>> = _detalle.asStateFlow()
+
+    private var trabajoDetalle: Job? = null
+
+    fun abrir(id: Int) {
+        trabajoDetalle?.cancel() // si se abre otro, se cancela el anterior
+        trabajoDetalle = viewModelScope.launch {
+            _detalle.value = UiState.Cargando
+            // Pide la publicación y sus comentarios a la vez
+            val (resPost, resComentarios) = coroutineScope {
+                val post = async { repo.detalle(id) }
+                val comentarios = async { repo.comentarios(id) }
+                post.await() to comentarios.await()
+            }
+            val post = resPost.getOrElse {
+                _detalle.value = UiState.Error(mensajeDe(it))
+                return@launch
+            }
+            val comentarios = resComentarios.getOrElse {
+                _detalle.value = UiState.Error(mensajeDe(it))
+                return@launch
+            }
+            _detalle.value = UiState.Exito(DetalleUi(post, comentarios))
         }
     }
 }

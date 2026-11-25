@@ -2,6 +2,7 @@ package com.ortiz.murocampus
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,8 +13,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ortiz.murocampus.ui.PantallaDetalle
 import com.ortiz.murocampus.ui.PantallaLista
 import com.ortiz.murocampus.ui.theme.MuroCampusTheme
 import com.ortiz.murocampus.viewmodel.PostsViewModel
@@ -27,6 +33,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             MuroCampusTheme {
                 val vm: PostsViewModel = viewModel(factory = PostsViewModelFactory)
+                // null = se ve la lista; un id = se ve el detalle de esa publicación
+                var idSeleccionado by rememberSaveable { mutableStateOf<Int?>(null) }
+
+                // El botón Atrás del sistema vuelve a la lista
+                BackHandler(enabled = idSeleccionado != null) { idSeleccionado = null }
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
@@ -39,7 +51,20 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 ) { innerPadding ->
-                    PantallaLista(vm = vm, modifier = Modifier.padding(innerPadding))
+                    val id = idSeleccionado
+                    if (id == null) {
+                        PantallaLista(
+                            vm = vm,
+                            onAbrir = { idSeleccionado = it },
+                            modifier = Modifier.padding(innerPadding)
+                        )
+                    } else {
+                        PantallaDetalle(
+                            vm = vm,
+                            id = id,
+                            modifier = Modifier.padding(innerPadding)
+                        )
+                    }
                 }
             }
         }
