@@ -63,6 +63,7 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
 
     fun abrir(id: Int) {
         trabajoDetalle?.cancel() // si se abre otro, se cancela el anterior
+        _borrado.value = null     // limpia un error de borrado anterior
         trabajoDetalle = viewModelScope.launch {
             _detalle.value = UiState.Cargando
             // Pide la publicación y sus comentarios a la vez
@@ -100,5 +101,30 @@ class PostsViewModel(private val repo: PostRepository) : ViewModel() {
     // Al volver a abrir el formulario, se limpia el mensaje anterior
     fun reiniciarPublicacion() {
         _publicacion.value = null
+    }
+
+    // ---------- Borrar ----------
+    // null = no se pidió borrar; Exito(id) = se borró esa publicación
+    private val _borrado = MutableStateFlow<UiState<Int>?>(null)
+    val borrado: StateFlow<UiState<Int>?> = _borrado.asStateFlow()
+
+    fun borrar(id: Int) {
+        viewModelScope.launch {
+            _borrado.value = UiState.Cargando
+            repo.borrar(id)
+                .onSuccess {
+                    // JSONPlaceholder no borra de verdad: la quitamos de la lista local
+                    val actual = _lista.value
+                    if (actual is UiState.Exito) {
+                        _lista.value = UiState.Exito(actual.datos.filterNot { it.id == id })
+                    }
+                    _borrado.value = UiState.Exito(id)
+                }
+                .onFailure { _borrado.value = UiState.Error(mensajeDe(it)) }
+        }
+    }
+
+    fun reiniciarBorrado() {
+        _borrado.value = null
     }
 }
